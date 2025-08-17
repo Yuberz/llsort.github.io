@@ -6,6 +6,7 @@
         <title>Love Live Character Sorter</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
+            /* CSS remains unchanged */
             :root {
                 --primary: #ff66aa;
                 --secondary: #f0f0f8;
@@ -538,12 +539,6 @@
         </div>
 
         <script>
-            // Chart instances for destruction
-            let yearChartInstance = null;
-            let groupChartInstance = null;
-            let bloodChartInstance = null;
-            let heightChartInstance = null;
-
             // Character data with blood type and height
             const CHARACTER_DATA = [
                 // μ's characters
@@ -1234,24 +1229,6 @@
 
                 // Updated back button event listener
                 backBtn.addEventListener("click", () => {
-                    // Destroy all charts
-                    if (yearChartInstance) {
-                        yearChartInstance.destroy();
-                        yearChartInstance = null;
-                    }
-                    if (groupChartInstance) {
-                        groupChartInstance.destroy();
-                        groupChartInstance = null;
-                    }
-                    if (bloodChartInstance) {
-                        bloodChartInstance.destroy();
-                        bloodChartInstance = null;
-                    }
-                    if (heightChartInstance) {
-                        heightChartInstance.destroy();
-                        heightChartInstance = null;
-                    }
-
                     resultsContainer.style.display = "none";
                     mainContainer.style.display = "block";
                     // Reset tournament with current settings
@@ -1679,11 +1656,6 @@
 
             // Show year statistics
             function showYearStats() {
-                // Destroy existing chart if it exists
-                if (yearChartInstance) {
-                    yearChartInstance.destroy();
-                }
-
                 const yearWins = {};
 
                 // Calculate wins by year
@@ -1703,7 +1675,7 @@
                 const ctx = document
                     .getElementById("yearChart")
                     .getContext("2d");
-                yearChartInstance = new Chart(ctx, {
+                new Chart(ctx, {
                     type: "bar",
                     data: {
                         labels: years.map((year) => `Year ${year}`),
@@ -1741,11 +1713,6 @@
 
             // Show group statistics
             function showGroupStats() {
-                // Destroy existing chart if it exists
-                if (groupChartInstance) {
-                    groupChartInstance.destroy();
-                }
-
                 const groupWins = {};
 
                 // Calculate wins by group
@@ -1775,7 +1742,7 @@
                 const ctx = document
                     .getElementById("groupChart")
                     .getContext("2d");
-                groupChartInstance = new Chart(ctx, {
+                new Chart(ctx, {
                     type: "pie",
                     data: {
                         labels: groups,
@@ -1802,11 +1769,6 @@
 
             // Show blood type statistics
             function showBloodStats() {
-                // Destroy existing chart if it exists
-                if (bloodChartInstance) {
-                    bloodChartInstance.destroy();
-                }
-
                 const bloodWins = {};
 
                 // Calculate wins by blood type
@@ -1832,7 +1794,7 @@
                 const ctx = document
                     .getElementById("bloodChart")
                     .getContext("2d");
-                bloodChartInstance = new Chart(ctx, {
+                new Chart(ctx, {
                     type: "doughnut",
                     data: {
                         labels: bloodTypes.map((bt) => `Type ${bt}`),
@@ -1859,11 +1821,6 @@
 
             // Show height analysis (FIXED)
             function showHeightAnalysis() {
-                // Destroy existing chart if it exists
-                if (heightChartInstance) {
-                    heightChartInstance.destroy();
-                }
-
                 const heightStats = document.getElementById("heightStats");
                 const validHeightChars = tournament.characters.filter(
                     (char) => char.height > 0,
@@ -1929,7 +1886,7 @@
                 const ctx = document
                     .getElementById("heightChart")
                     .getContext("2d");
-                heightChartInstance = new Chart(ctx, {
+                new Chart(ctx, {
                     type: "bar",
                     data: {
                         labels: names,
