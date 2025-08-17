@@ -1,5 +1,5 @@
 # LLSorter
-A Love Live! character true round robin sorter.
+A Love Live! character true round robin sorter. Access the website [here.](https://yuberz.github.io/llsort.github.io/)
 
 ## Features
 - Every character from μ's to Ikizurai-Bu!
