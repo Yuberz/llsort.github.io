@@ -6,6 +6,7 @@
         <title>Love Live Character Sorter</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
+            /* CSS remains unchanged */
             :root {
                 --primary: #ff66aa;
                 --secondary: #f0f0f8;
@@ -1366,6 +1367,26 @@
                             tournament.matchups[tournament.currentMatchup];
 
                         if (isKnownRelationship(char1, char2)) {
+                            // FIX: Award win to transitive winner
+                            let winner;
+                            if (tournament.graph[char1].has(char2)) {
+                                winner = char1;
+                            } else if (tournament.graph[char2].has(char1)) {
+                                winner = char2;
+                            } else {
+                                // Shouldn't happen, but skip if it does
+                                console.error(
+                                    "Inconsistent graph for",
+                                    char1,
+                                    char2,
+                                );
+                                tournament.skippedComparisons++;
+                                tournament.currentMatchup++;
+                                continue;
+                            }
+
+                            // Award win to transitive winner
+                            tournament.wins[winner]++;
                             tournament.skippedComparisons++;
                             tournament.currentMatchup++;
                             updateProgressText();
