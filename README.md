@@ -17,8 +17,6 @@ A Love Live! character true round robin sorter.
 ## TODO
 - Maybe add the rival groups (would take only a few minutes but I'm lazy)
 - Maybe add supporting characters
-- Fix UI to not show remaining matches
-- Add an undo button (oops)
 
 ## Credits
 - All images are pulled from the [Love Live Wiki](https://love-live.fandom.com/wiki/Main_Page) in order to have a consistent appearance.
