@@ -400,9 +400,7 @@
 
         <header>
             <h1>Love Live Character Sorter</h1>
-            <div class="subtitle">
-                Discover your favorite idols through head-to-head matchups
-            </div>
+            <div class="subtitle">Discover your favorite school idols!</div>
         </header>
 
         <div class="main-container">
@@ -424,6 +422,16 @@
                         comparisons)</label
                     >
                 </div>
+                <div class="setting-item">
+                    <input type="checkbox" id="showGroupYear" />
+                    <label for="showGroupYear">Show Group and Year</label>
+                </div>
+                <div class="setting-item">
+                    <input type="checkbox" id="showBloodHeight" />
+                    <label for="showBloodHeight"
+                        >Show Blood Type and Height</label
+                    >
+                </div>
             </div>
 
             <div class="instructions">
@@ -432,17 +440,16 @@
             </div>
 
             <div class="progress-container">
-                <div id="progressText">
-                    Select at least 2 characters from groups
-                </div>
+                <div id="progressText">Select at least 1 group to sort!</div>
                 <div class="comparison-stats">
                     <div class="stat-box">
-                        Total Matchups: <span id="totalMatchups">0</span>
+                        Rounds Completed: <span id="completedMatchups">0</span>
                     </div>
-                    <div class="stat-box">
-                        Completed: <span id="completedMatchups">0</span>
-                    </div>
-                    <div class="stat-box">
+                    <div
+                        class="stat-box"
+                        id="skippedContainer"
+                        style="display: none"
+                    >
                         Skipped: <span id="skippedMatchups">0</span>
                     </div>
                 </div>
@@ -453,6 +460,7 @@
             </div>
 
             <div class="btn-container">
+                <button id="undoBtn" disabled>Undo Last</button>
                 <button id="resultsBtn" disabled>View Results</button>
             </div>
         </div>
@@ -1124,6 +1132,9 @@
                 graph: {},
                 quickMode: false,
                 selectedGroups: [],
+                history: [], // Added for undo functionality
+                showGroupYear: false,
+                showBloodHeight: false,
             };
 
             // DOM Elements
@@ -1141,11 +1152,17 @@
             const quickModeCheckbox = document.getElementById("quickMode");
             const tabButtons = document.querySelectorAll(".tab-btn");
             const tabContents = document.querySelectorAll(".tab-content");
-            const totalMatchupsEl = document.getElementById("totalMatchups");
             const completedMatchupsEl =
                 document.getElementById("completedMatchups");
             const skippedMatchupsEl =
                 document.getElementById("skippedMatchups");
+            const skippedContainer =
+                document.getElementById("skippedContainer");
+            const undoBtn = document.getElementById("undoBtn");
+            const showGroupYearCheckbox =
+                document.getElementById("showGroupYear");
+            const showBloodHeightCheckbox =
+                document.getElementById("showBloodHeight");
 
             // Initialize the application
             function initApp() {
@@ -1167,8 +1184,13 @@
 
                 // Reset all UI elements to default state
                 quickModeCheckbox.checked = false;
+                showGroupYearCheckbox.checked = false;
+                showBloodHeightCheckbox.checked = false;
                 tournament.quickMode = false;
+                tournament.showGroupYear = false;
+                tournament.showBloodHeight = false;
                 resultsBtn.disabled = true;
+                undoBtn.disabled = true;
 
                 // Set initial groups
                 tournament.selectedGroups = groups;
@@ -1217,6 +1239,17 @@
                     resetTournament();
                 });
 
+                showGroupYearCheckbox.addEventListener("change", () => {
+                    tournament.showGroupYear = showGroupYearCheckbox.checked;
+                    redrawMatchup();
+                });
+
+                showBloodHeightCheckbox.addEventListener("change", () => {
+                    tournament.showBloodHeight =
+                        showBloodHeightCheckbox.checked;
+                    redrawMatchup();
+                });
+
                 // Tab switching
                 tabButtons.forEach((button) => {
                     button.addEventListener("click", () => {
@@ -1237,6 +1270,9 @@
                         });
                     });
                 });
+
+                // Undo button event listener
+                undoBtn.addEventListener("click", undoLastChoice);
             }
 
             // Update character selection based on groups
@@ -1265,6 +1301,7 @@
                 tournament.comparisonsDone = 0;
                 tournament.skippedComparisons = 0;
                 tournament.graph = {};
+                tournament.history = [];
 
                 // Initialize wins and graph
                 tournament.characters.forEach((char) => {
@@ -1287,6 +1324,7 @@
                 // Update UI
                 updateProgressText();
                 resultsBtn.disabled = true;
+                undoBtn.disabled = true;
 
                 // Show first matchup
                 showMatchup();
@@ -1304,11 +1342,19 @@
             // Show current matchup
             function showMatchup() {
                 matchupContainer.innerHTML = "";
+                undoBtn.disabled = tournament.history.length === 0;
 
                 if (tournament.characters.length < 2) {
                     progressText.textContent =
-                        "Select at least 2 characters from groups";
+                        "Select at least 1 group to sort!";
                     return;
+                }
+
+                // Update skipped container visibility
+                if (tournament.quickMode) {
+                    skippedContainer.style.display = "block";
+                } else {
+                    skippedContainer.style.display = "none";
                 }
 
                 // Skip known relationships in quick mode
@@ -1341,7 +1387,7 @@
                                     tournament.skippedComparisons) /
                                     tournament.totalPossibleMatchups) *
                                 100;
-                            progressText.textContent = `Sorting Complete! Comparisons: ${tournament.comparisonsDone} made, ${tournament.skippedComparisons} skipped\nProgress: ${progressPercent.toFixed(1)}%`;
+                            progressText.textContent = `Sorting Complete!`;
                         } else {
                             progressText.textContent =
                                 "Sorting Complete! Click 'View Results' to see rankings.";
@@ -1349,6 +1395,14 @@
                     }
                     return;
                 }
+
+                // Redraw the matchup
+                redrawMatchup();
+            }
+
+            // Redraw the current matchup
+            function redrawMatchup() {
+                matchupContainer.innerHTML = "";
 
                 // Get current matchup characters
                 const [char1Name, char2Name] =
@@ -1366,19 +1420,31 @@
 
                 matchupContainer.appendChild(char1Btn);
                 matchupContainer.appendChild(char2Btn);
-
-                // Update progress
-                updateProgressText();
             }
 
             // Create character button
             function createCharacterButton(char, index) {
                 const button = document.createElement("div");
                 button.className = "character-btn";
+
+                let infoHTML = "";
+
+                // Add group and year info if enabled
+                if (tournament.showGroupYear) {
+                    infoHTML += `<div class="character-info">${char.group} • Year ${char.year}</div>`;
+                }
+
+                // Add blood type and height info if enabled
+                if (tournament.showBloodHeight) {
+                    const bloodType =
+                        char.blood_type === "-" ? "Unknown" : char.blood_type;
+                    infoHTML += `<div class="character-info">Blood: ${bloodType} • Height: ${char.height} cm</div>`;
+                }
+
                 button.innerHTML = `
                 <img src="${char.image_url}" alt="${char.name}" class="character-img" onerror="this.src='https://via.placeholder.com/220x220/ffccdd/666666?text=Image+Not+Available'">
                 <div class="character-name">${char.name}</div>
-                <div class="character-info">${char.group} • Year ${char.year}</div>
+                ${infoHTML}
             `;
 
                 button.addEventListener("click", () => {
@@ -1395,6 +1461,19 @@
                 const winner = choiceIndex === 0 ? char1Name : char2Name;
                 const loser = choiceIndex === 0 ? char2Name : char1Name;
 
+                // Save state to history for undo
+                tournament.history.push({
+                    matchup: [char1Name, char2Name],
+                    winner: winner,
+                    wins: { ...tournament.wins },
+                    graph: tournament.quickMode
+                        ? cloneGraph(tournament.graph)
+                        : null,
+                    comparisonsDone: tournament.comparisonsDone,
+                    skippedComparisons: tournament.skippedComparisons,
+                    currentMatchup: tournament.currentMatchup,
+                });
+
                 // Update wins
                 tournament.wins[winner]++;
                 tournament.comparisonsDone++;
@@ -1406,6 +1485,36 @@
 
                 // Move to next matchup
                 tournament.currentMatchup++;
+                updateProgressText();
+                showMatchup();
+            }
+
+            // Clone graph for undo functionality
+            function cloneGraph(graph) {
+                const clone = {};
+                for (const char in graph) {
+                    clone[char] = new Set(graph[char]);
+                }
+                return clone;
+            }
+
+            // Undo last choice
+            function undoLastChoice() {
+                if (tournament.history.length === 0) return;
+
+                const lastAction = tournament.history.pop();
+
+                // Restore state
+                tournament.wins = lastAction.wins;
+                tournament.comparisonsDone = lastAction.comparisonsDone;
+                tournament.skippedComparisons = lastAction.skippedComparisons;
+                tournament.currentMatchup = lastAction.currentMatchup;
+
+                if (tournament.quickMode && lastAction.graph) {
+                    tournament.graph = lastAction.graph;
+                }
+
+                // Update UI
                 updateProgressText();
                 showMatchup();
             }
@@ -1452,7 +1561,6 @@
 
             // Update progress text
             function updateProgressText() {
-                totalMatchupsEl.textContent = tournament.totalPossibleMatchups;
                 completedMatchupsEl.textContent = tournament.comparisonsDone;
                 skippedMatchupsEl.textContent = tournament.skippedComparisons;
 
@@ -1463,17 +1571,17 @@
                                 tournament.skippedComparisons) /
                                 tournament.totalPossibleMatchups) *
                             100;
-                        progressText.textContent = `Comparisons: ${tournament.comparisonsDone} made, ${tournament.skippedComparisons} skipped.\nProgress: ${progressPercent.toFixed(1)}%`;
+                        progressText.textContent = `Progress: ${progressPercent.toFixed(1)}%`;
                     } else {
                         progressText.textContent =
-                            "Select at least 2 characters from groups";
+                            "Select at least 1 group to sort!";
                     }
                 } else {
                     if (tournament.matchups.length > 0) {
                         progressText.textContent = `Matchup ${tournament.currentMatchup + 1} of ${tournament.matchups.length}`;
                     } else {
                         progressText.textContent =
-                            "Select at least 2 characters from groups";
+                            "Select at least 1 group to sort!";
                     }
                 }
             }
