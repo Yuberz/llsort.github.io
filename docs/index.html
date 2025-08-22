@@ -609,6 +609,29 @@
                         Skipped: <span id="skippedMatchups">0</span>
                     </div>
                 </div>
+                <div
+                    id="progressBarContainer"
+                    style="margin-top: 10px; display: none"
+                >
+                    <div
+                        style="
+                            width: 100%;
+                            background-color: #f0f0f0;
+                            border-radius: 5px;
+                        "
+                    >
+                        <div
+                            id="progressBar"
+                            style="
+                                height: 10px;
+                                width: 0%;
+                                background-color: #ff66aa;
+                                border-radius: 5px;
+                                transition: width 0.3s;
+                            "
+                        ></div>
+                    </div>
+                </div>
             </div>
 
             <div class="matchup-container" id="matchupContainer">
@@ -633,7 +656,7 @@
                     </button>
                     <button class="tab-btn" data-tab="year">Year Stats</button>
                     <button class="tab-btn" data-tab="group">
-                        Group Stats
+                        Group Rankings
                     </button>
                     <button class="tab-btn" data-tab="blood">Blood Type</button>
                     <button class="tab-btn" data-tab="height">
@@ -665,10 +688,18 @@
                 </div>
 
                 <div id="groupTab" class="tab-content">
-                    <h2>Group Statistics</h2>
-                    <div class="chart-container">
-                        <canvas id="groupChart"></canvas>
-                    </div>
+                    <h2>Group Rankings by Average Character Rank</h2>
+                    <table id="groupRankingsTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Group</th>
+                                <th>Avg. Character Rank</th>
+                                <th>Characters</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
 
                 <div id="bloodTab" class="tab-content">
@@ -698,7 +729,6 @@
         <script>
             // Chart instances for destruction
             let yearChartInstance = null;
-            let groupChartInstance = null;
             let bloodChartInstance = null;
 
             // Character data with blood type and height
@@ -1396,10 +1426,6 @@
                         yearChartInstance.destroy();
                         yearChartInstance = null;
                     }
-                    if (groupChartInstance) {
-                        groupChartInstance.destroy();
-                        groupChartInstance = null;
-                    }
                     if (bloodChartInstance) {
                         bloodChartInstance.destroy();
                         bloodChartInstance = null;
@@ -1892,64 +1918,75 @@
                 });
             }
 
-            // Show group statistics
+            // Show group statistics (UPDATED to show average ranking)
             function showGroupStats() {
-                // Destroy existing chart if it exists
-                if (groupChartInstance) {
-                    groupChartInstance.destroy();
-                }
+                const tableBody = document.querySelector(
+                    "#groupRankingsTable tbody",
+                );
+                tableBody.innerHTML = "";
 
-                const groupWins = {};
+                // First, get character rankings
+                const sortedCharacters = [...tournament.characters].sort(
+                    (a, b) => tournament.wins[b.name] - tournament.wins[a.name],
+                );
 
-                // Calculate wins by group
+                // Create a map of character name to rank
+                const characterRanks = {};
+                sortedCharacters.forEach((char, index) => {
+                    characterRanks[char.name] = index + 1;
+                });
+
+                // Calculate average rank for each group
+                const groupRanks = {};
+
                 tournament.characters.forEach((char) => {
                     const group = char.group;
-                    if (!groupWins[group]) {
-                        groupWins[group] = 0;
+                    if (!groupRanks[group]) {
+                        groupRanks[group] = {
+                            totalRank: 0,
+                            count: 0,
+                            characters: [],
+                        };
                     }
-                    groupWins[group] += tournament.wins[char.name];
+                    groupRanks[group].totalRank += characterRanks[char.name];
+                    groupRanks[group].count += 1;
+                    groupRanks[group].characters.push(char.name);
                 });
 
-                // Prepare chart data
-                const groups = Object.keys(groupWins);
-                const wins = groups.map((group) => groupWins[group]);
-                const backgroundColors = groups.map((_, i) => {
-                    const colors = [
-                        "#ff99cc",
-                        "#99ccff",
-                        "#99ff99",
-                        "#ffcc99",
-                        "#cc99ff",
-                    ];
-                    return colors[i % colors.length];
-                });
+                // Calculate average and prepare for sorting
+                const groupAverages = [];
+                for (const group in groupRanks) {
+                    const avg =
+                        groupRanks[group].totalRank / groupRanks[group].count;
+                    groupAverages.push({
+                        group: group,
+                        average: avg,
+                        characters: groupRanks[group].characters,
+                    });
+                }
 
-                // Create chart
-                const ctx = document
-                    .getElementById("groupChart")
-                    .getContext("2d");
-                groupChartInstance = new Chart(ctx, {
-                    type: "pie",
-                    data: {
-                        labels: groups,
-                        datasets: [
-                            {
-                                label: "Wins by Group",
-                                data: wins,
-                                backgroundColor: backgroundColors,
-                                borderWidth: 1,
-                            },
-                        ],
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: "right",
-                            },
-                        },
-                    },
+                // Sort groups by average rank (lowest average = best)
+                groupAverages.sort((a, b) => a.average - b.average);
+
+                // Populate the table
+                groupAverages.forEach((group, index) => {
+                    const row = document.createElement("tr");
+
+                    // Format character list
+                    const characterList = group.characters
+                        .map((name) => {
+                            const rank = characterRanks[name];
+                            return `${name} (#${rank})`;
+                        })
+                        .join(", ");
+
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${group.group}</td>
+                        <td>${group.average.toFixed(2)}</td>
+                        <td>${characterList}</td>
+                    `;
+                    tableBody.appendChild(row);
                 });
             }
 
