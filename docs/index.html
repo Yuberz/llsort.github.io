@@ -547,6 +547,112 @@
                 overflow-x: auto;
                 padding: 10px 5px;
             }
+
+            /* Export/Import Styles */
+            .export-import-container {
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                margin: 15px 0;
+            }
+
+            .export-btn {
+                background: linear-gradient(to right, #66aa66, #559955);
+            }
+
+            .import-btn {
+                background: linear-gradient(to right, #6666aa, #555599);
+            }
+
+            .export-import-modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+                z-index: 1000;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .export-import-content {
+                background-color: white;
+                padding: 25px;
+                border-radius: 15px;
+                width: 90%;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            }
+
+            .export-import-content h3 {
+                margin-bottom: 15px;
+                color: var(--primary);
+                text-align: center;
+            }
+
+            .export-import-textarea {
+                width: 100%;
+                min-height: 150px;
+                padding: 15px;
+                border: 2px solid #e0e0ff;
+                border-radius: 10px;
+                font-family: monospace;
+                resize: vertical;
+                margin-bottom: 15px;
+            }
+
+            .export-import-buttons {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .copy-btn {
+                background: linear-gradient(to right, #66aaff, #5599ff);
+            }
+
+            .close-btn {
+                background: linear-gradient(to right, #ff6666, #ff5555);
+            }
+
+            .notification {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                background: linear-gradient(to right, #66aa66, #559955);
+                color: white;
+                border-radius: 50px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                z-index: 1001;
+                animation:
+                    slideIn 0.3s ease,
+                    fadeOut 0.5s ease 2.5s forwards;
+            }
+
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                }
+                to {
+                    opacity: 0;
+                }
+            }
         </style>
     </head>
     <body>
@@ -642,11 +748,28 @@
                 <button id="undoBtn" disabled>Undo Last</button>
                 <button id="resultsBtn" disabled>View Results</button>
             </div>
+
+            <!-- Import button in main interface -->
+            <div class="export-import-container">
+                <button class="import-btn" id="importMainBtn">
+                    Import Results
+                </button>
+            </div>
         </div>
 
         <div class="results-container" id="resultsContainer">
             <div class="btn-container">
                 <button class="back-btn" id="backBtn">↶ Back to Sorter</button>
+            </div>
+
+            <!-- Export/Import buttons in results -->
+            <div class="export-import-container">
+                <button class="export-btn" id="exportBtn">
+                    Export Results
+                </button>
+                <button class="import-btn" id="importBtn">
+                    Import Results
+                </button>
             </div>
 
             <div class="tab-container">
@@ -717,6 +840,31 @@
                         id="heightChartContainer"
                         class="height-bar-container scroll-container"
                     ></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export/Import Modal -->
+        <div class="export-import-modal" id="exportImportModal">
+            <div class="export-import-content">
+                <h3 id="modalTitle">Export Results</h3>
+                <textarea
+                    id="exportImportTextarea"
+                    class="export-import-textarea"
+                    placeholder="Export/Import data will appear here..."
+                ></textarea>
+                <div class="export-import-buttons">
+                    <button class="copy-btn" id="copyBtn">
+                        Copy to Clipboard
+                    </button>
+                    <button
+                        class="import-confirm-btn"
+                        id="importConfirmBtn"
+                        style="display: none"
+                    >
+                        Import
+                    </button>
+                    <button class="close-btn" id="closeModalBtn">Close</button>
                 </div>
             </div>
         </div>
@@ -1357,6 +1505,19 @@
             const showBloodHeightCheckbox =
                 document.getElementById("showBloodHeight");
 
+            // Export/Import Elements
+            const exportBtn = document.getElementById("exportBtn");
+            const importBtn = document.getElementById("importBtn");
+            const importMainBtn = document.getElementById("importMainBtn");
+            const exportImportModal =
+                document.getElementById("exportImportModal");
+            const modalTitle = document.getElementById("modalTitle");
+            const exportImportTextarea = document.getElementById(
+                "exportImportTextarea",
+            );
+            const copyBtn = document.getElementById("copyBtn");
+            const closeModalBtn = document.getElementById("closeModalBtn");
+
             // Initialize the application
             function initApp() {
                 // Extract unique groups
@@ -1476,6 +1637,18 @@
 
                 // Undo button event listener
                 undoBtn.addEventListener("click", undoLastChoice);
+
+                // Export/Import event listeners
+                exportBtn.addEventListener("click", showExportModal);
+                importBtn.addEventListener("click", () =>
+                    showImportModal(false),
+                );
+                importConfirmBtn.addEventListener("click", confirmImport);
+                importMainBtn.addEventListener("click", () =>
+                    showImportModal(true),
+                );
+                copyBtn.addEventListener("click", copyToClipboard);
+                closeModalBtn.addEventListener("click", closeModal);
             }
 
             // Update character selection based on groups
@@ -2172,6 +2345,181 @@
 
                     heightChartContainer.innerHTML += barHTML;
                 });
+            }
+
+            // Export results function
+            function exportResults() {
+                // Create export data object
+                const exportData = {
+                    version: "1.0",
+                    timestamp: new Date().toISOString(),
+                    wins: tournament.wins,
+                    selectedGroups: tournament.selectedGroups,
+                    comparisonsDone: tournament.comparisonsDone,
+                    skippedComparisons: tournament.skippedComparisons,
+                };
+
+                // Convert to JSON string and then base64 encode
+                const jsonString = JSON.stringify(exportData);
+                const base64String = btoa(
+                    unescape(encodeURIComponent(jsonString)),
+                );
+
+                // Show modal with export data
+                modalTitle.textContent = "Export Results";
+                exportImportTextarea.value = base64String;
+                exportImportModal.style.display = "flex";
+            }
+
+            // Show import modal
+            function showImportModal(isFromMain) {
+                modalTitle.textContent = "Import Results";
+                exportImportTextarea.value = "";
+
+                // Show/hide appropriate buttons
+                copyBtn.style.display = "none";
+                importConfirmBtn.style.display = "block";
+                closeModalBtn.textContent = "Cancel";
+
+                exportImportModal.style.display = "flex";
+
+                // Store where import was initiated from
+                exportImportModal.dataset.fromMain = isFromMain;
+            }
+
+            function showExportModal() {
+                modalTitle.textContent = "Export Results";
+
+                // Create export data
+                const exportData = {
+                    version: "1.0",
+                    timestamp: new Date().toISOString(),
+                    wins: tournament.wins,
+                    selectedGroups: tournament.selectedGroups,
+                    comparisonsDone: tournament.comparisonsDone,
+                    skippedComparisons: tournament.skippedComparisons,
+                };
+
+                // Convert to JSON string and then base64 encode
+                const jsonString = JSON.stringify(exportData);
+                const base64String = btoa(
+                    unescape(encodeURIComponent(jsonString)),
+                );
+                exportImportTextarea.value = base64String;
+
+                // Show/hide appropriate buttons
+                copyBtn.style.display = "block";
+                importConfirmBtn.style.display = "none";
+                closeModalBtn.textContent = "Close";
+
+                exportImportModal.style.display = "flex";
+            }
+
+            // Copy to clipboard function
+            function copyToClipboard() {
+                exportImportTextarea.select();
+                document.execCommand("copy");
+
+                // Show notification
+                showNotification("Copied to clipboard!");
+            }
+
+            // Close modal function
+            function closeModal() {
+                exportImportModal.style.display = "none";
+            }
+
+            function confirmImport() {
+                const importString = exportImportTextarea.value.trim();
+                if (importString !== "") {
+                    processImport(importString);
+                }
+                closeModal();
+            }
+
+            // Process import data
+            function processImport(importString) {
+                try {
+                    // Decode base64 string
+                    const jsonString = decodeURIComponent(
+                        escape(atob(importString)),
+                    );
+                    const importData = JSON.parse(jsonString);
+
+                    // Validate import data
+                    if (!importData.wins || !importData.selectedGroups) {
+                        throw new Error("Invalid import data format");
+                    }
+
+                    // Update tournament state with imported data
+                    tournament.wins = importData.wins;
+                    tournament.selectedGroups = importData.selectedGroups;
+                    tournament.comparisonsDone =
+                        importData.comparisonsDone || 0;
+                    tournament.skippedComparisons =
+                        importData.skippedComparisons || 0;
+
+                    // Update group checkboxes
+                    document
+                        .querySelectorAll(".group-checkbox")
+                        .forEach((checkbox) => {
+                            checkbox.checked =
+                                importData.selectedGroups.includes(checkbox.id);
+                        });
+
+                    // Filter characters based on imported groups
+                    tournament.characters = CHARACTER_DATA.filter((char) =>
+                        importData.selectedGroups.includes(char.group),
+                    );
+
+                    // Show notification
+                    showNotification("Results imported successfully!");
+
+                    // If import was from main page, show results
+                    if (exportImportModal.dataset.fromMain === "true") {
+                        showResults();
+                    } else {
+                        // Refresh results display
+                        showRankings();
+                        showYearStats();
+                        showGroupStats();
+                        showBloodStats();
+                        showHeightAnalysis();
+                    }
+                } catch (error) {
+                    console.error("Import error:", error);
+                    showNotification(
+                        "Error importing data. Please check the import string.",
+                        true,
+                    );
+                }
+            }
+
+            // Show notification function
+            function showNotification(message, isError = false) {
+                // Remove existing notifications
+                const existingNotifications =
+                    document.querySelectorAll(".notification");
+                existingNotifications.forEach((notification) =>
+                    notification.remove(),
+                );
+
+                // Create new notification
+                const notification = document.createElement("div");
+                notification.className = "notification";
+                notification.textContent = message;
+
+                if (isError) {
+                    notification.style.background =
+                        "linear-gradient(to right, #ff6666, #ff5555)";
+                }
+
+                document.body.appendChild(notification);
+
+                // Remove notification after animation
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
             }
 
             // Initialize the application when the page loads
