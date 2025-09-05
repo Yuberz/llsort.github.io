@@ -7,6 +7,7 @@ A Love Live! character true round robin sorter. Access the website [here.](https
 - True round robin, providing the most accurate answers possible.
 - "Quick" mode which uses transitive relationships to dramatically reduce time required to complete (common with other Love Live character sorters online)
 - Uses true randomness to avoid bias (in both modes).
+- Importing/Exporting results as a string
 
 ## Caveats
 - True round robin takes an immense amount of comparisons (1953 comparisons!)
